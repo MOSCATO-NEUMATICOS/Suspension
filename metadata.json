@@ -1,0 +1,5 @@
+{
+  "name": "Suspension Moscato Time",
+  "description": "An advanced application for estimating vehicle suspension repair times, featuring synergy calculations and AI-powered insights. Select a vehicle, choose parts, and get an accurate time estimate. Manage vehicles, parts, and synergy rules. Includes a Gemini-powered chatbot for assistance, part information lookup with Google Search grounding, and a 'Thinking Mode' for complex synergy analysis.",
+  "requestFramePermissions": []
+}
