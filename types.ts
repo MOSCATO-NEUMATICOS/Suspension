@@ -17,7 +17,7 @@ export interface Vehicle {
 export interface Synergy {
   id: string;
   name: string;
-  partIds: string[];
+  partNames: string[];
   timeReduction: number;
 }
 

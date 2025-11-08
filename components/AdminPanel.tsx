@@ -202,21 +202,21 @@ const VehicleManager: React.FC<{ vehicles: Vehicle[]; setVehicles: React.Dispatc
 
 const SynergyModal: React.FC<{ 
     synergy: Partial<Synergy> | null; 
-    allParts: { id: string, name: string }[];
+    allPartNames: string[];
     onClose: () => void;
     onSave: (synergy: Omit<Synergy, 'id'> & { id?: string }) => void;
-}> = ({ synergy, allParts, onClose, onSave }) => {
+}> = ({ synergy, allPartNames, onClose, onSave }) => {
     const [name, setName] = useState(synergy?.name || '');
-    const [partIds, setPartIds] = useState<string[]>(synergy?.partIds || []);
+    const [partNames, setPartNames] = useState<string[]>(synergy?.partNames || []);
     const [timeReduction, setTimeReduction] = useState(synergy?.timeReduction || 0);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || partIds.length < 2 || timeReduction <= 0) {
+        if (!name || partNames.length < 2 || timeReduction <= 0) {
             alert("Por favor, complete todos los campos. Se requieren al menos 2 repuestos y una reducción de tiempo mayor a cero.");
             return;
         }
-        onSave({ id: synergy?.id, name, partIds, timeReduction });
+        onSave({ id: synergy?.id, name, partNames, timeReduction });
     };
 
     return (
@@ -232,9 +232,9 @@ const SynergyModal: React.FC<{
                             </div>
                             <div>
                                 <label htmlFor="synergy-parts" className="block text-sm font-medium text-gray-300 mb-1">Repuestos Involucrados (Generado por IA, verifique la selección)</label>
-                                <select id="synergy-parts" multiple value={partIds} onChange={e => setPartIds(Array.from(e.target.selectedOptions, option => option.value))} className="w-full h-48 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-400" >
-                                    {allParts.map(part => (
-                                        <option key={part.id} value={part.id}>{part.name}</option>
+                                <select id="synergy-parts" multiple value={partNames} onChange={e => setPartNames(Array.from(e.target.selectedOptions, option => option.value))} className="w-full h-48 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-yellow-400" >
+                                    {allPartNames.map(partName => (
+                                        <option key={partName} value={partName}>{partName}</option>
                                     ))}
                                 </select>
                             </div>
@@ -316,21 +316,11 @@ const SynergyManager: React.FC<{
     const [editingSynergy, setEditingSynergy] = useState<Partial<Synergy> | null>(null);
     const [isAiCreatorOpen, setIsAiCreatorOpen] = useState(false);
 
-    const allPartsWithContext = useMemo(() => {
-        const uniqueParts = new Map<string, { id: string, name: string }>();
-        vehicles.forEach(v => 
-            v.parts.forEach(p => {
-                if (!uniqueParts.has(p.name)) {
-                    uniqueParts.set(p.name, { id: p.id, name: p.name });
-                }
-            })
-        );
-        return Array.from(uniqueParts.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const allPartNames = useMemo(() => {
+        const uniquePartNames = new Set<string>();
+        vehicles.forEach(v => v.parts.forEach(p => uniquePartNames.add(p.name)));
+        return Array.from(uniquePartNames).sort();
     }, [vehicles]);
-    
-    const allPartNames = useMemo(() => allPartsWithContext.map(p => p.name), [allPartsWithContext]);
-    const partsMapByName = useMemo(() => new Map(allPartsWithContext.map(p => [p.name, p.id])), [allPartsWithContext]);
-    const partsMapById = useMemo(() => new Map(allPartsWithContext.map(p => [p.id, p.name])), [allPartsWithContext]);
 
     const handleEdit = (synergy: Synergy) => {
         setEditingSynergy(synergy);
@@ -344,20 +334,16 @@ const SynergyManager: React.FC<{
     };
     
     const handleAiSynergyGenerated = (data: { name: string; partNames: string[] }) => {
-        const foundPartIds = data.partNames
-            .map(name => partsMapByName.get(name))
-            .filter((id): id is string => !!id);
-        
-        const uniquePartIds = [...new Set(foundPartIds)];
+        const uniquePartNames = [...new Set(data.partNames)];
 
-        if (uniquePartIds.length < 2) {
+        if (uniquePartNames.length < 2) {
              alert("La IA no pudo encontrar al menos 2 repuestos válidos de la lista en su descripción. Por favor, intente de nuevo con nombres de repuestos más claros.");
              return;
         }
 
         setEditingSynergy({
             name: data.name,
-            partIds: uniquePartIds,
+            partNames: uniquePartNames,
         });
         setIsAiCreatorOpen(false);
         setIsModalOpen(true);
@@ -397,7 +383,7 @@ const SynergyManager: React.FC<{
                             <h4 className="font-bold text-gray-100">{synergy.name}</h4>
                             <p className="text-sm text-yellow-400 mt-1">Reducción: <strong>{synergy.timeReduction}h</strong></p>
                             <ul className="list-disc pl-5 mt-2 text-sm text-gray-400">
-                                {synergy.partIds.map(id => <li key={id}>{partsMapById.get(id) || `ID de Repuesto: ${id}`}</li>)}
+                                {synergy.partNames.map(name => <li key={name}>{name}</li>)}
                             </ul>
                         </div>
                         <div className="flex gap-2 flex-shrink-0 ml-4">
@@ -419,7 +405,7 @@ const SynergyManager: React.FC<{
         {isModalOpen && (
             <SynergyModal 
                 synergy={editingSynergy}
-                allParts={allPartsWithContext}
+                allPartNames={allPartNames}
                 onClose={() => { setIsModalOpen(false); setEditingSynergy(null); }}
                 onSave={handleSave}
             />

@@ -113,28 +113,24 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
         let baseTotal = breakdownItems.reduce((acc, item) => acc + item.originalTime, 0);
 
         // Step 2: Calculate predefined synergies
-        const selectedPartIds = new Set(analysisParts.map(p => p.id));
+        const selectedPartNames = new Set(analysisParts.map(p => p.name));
         let currentSynergySavings = 0;
         const currentAppliedSynergies: Synergy[] = [];
         const usedPartsForSynergy = new Set<string>();
 
         const applicableSynergies = synergies.filter(synergy =>
-            synergy.partIds.every(id => selectedPartIds.has(id))
+            synergy.partNames.every(name => selectedPartNames.has(name))
         );
 
-        // Sort synergies by the highest reduction first to prioritize them.
-        // This ensures that when synergies conflict (share parts), the one with the biggest saving is applied.
         applicableSynergies.sort((a, b) => b.timeReduction - a.timeReduction);
 
         applicableSynergies.forEach(synergy => {
-            // Check if any part in this synergy has already been "claimed" by a higher-priority synergy.
-            const isConflicting = synergy.partIds.some(partId => usedPartsForSynergy.has(partId));
+            const isConflicting = synergy.partNames.some(partName => usedPartsForSynergy.has(partName));
 
             if (!isConflicting) {
                 currentSynergySavings += synergy.timeReduction;
                 currentAppliedSynergies.push(synergy);
-                // Mark all parts of this synergy as used to prevent them from being part of another, smaller synergy saving.
-                synergy.partIds.forEach(partId => usedPartsForSynergy.add(partId));
+                synergy.partNames.forEach(partName => usedPartsForSynergy.add(partName));
             }
         });
         
@@ -152,21 +148,25 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
             },
         };
 
-        const findPart = (name: string, side?: 'izquierdo' | 'derecho') => 
-            analysisParts.some(p => p.name.toLowerCase().includes(name) && (side ? p.name.toLowerCase().includes(side) : true));
+        const getPart = (name: string, side?: 'izquierdo' | 'derecho') => 
+            analysisParts.find(p => p.name.toLowerCase().includes(name) && (side ? p.name.toLowerCase().includes(side) : true));
 
         for (const side of ['izquierdo', 'derecho'] as const) {
+            const axialPart = getPart('axial', side);
+            const extremoPart = getPart('extremo', side);
+            const amortiguadorPart = getPart('amortiguadores delanteros', side);
+
             // Axial + Extremo
-            if (findPart('axial', side) && findPart('extremo', side)) {
-                const part = analysisParts.find(p => p.name.toLowerCase().includes('extremo') && p.name.toLowerCase().includes(side))!;
-                discountedParts.set(part.id, Math.max(discountedParts.get(part.id) || 0, 1.0));
+            if (axialPart && extremoPart && !usedPartsForSynergy.has(axialPart.name) && !usedPartsForSynergy.has(extremoPart.name)) {
+                discountedParts.set(extremoPart.id, Math.max(discountedParts.get(extremoPart.id) || 0, 1.0));
             }
+
             // Amortiguador delantero synergy
-            if (findPart('amortiguadores delanteros', side)) {
+            if (amortiguadorPart) {
                 ['bieleta', 'extremo', 'axial', 'homocinetica'].forEach(name => {
-                    if (findPart(name, side)) {
-                       const part = analysisParts.find(p => p.name.toLowerCase().includes(name) && p.name.toLowerCase().includes(side))!;
-                       discountedParts.set(part.id, Math.max(discountedParts.get(part.id) || 0, 0.5));
+                    const otherPart = getPart(name, side);
+                    if (otherPart && !usedPartsForSynergy.has(amortiguadorPart.name) && !usedPartsForSynergy.has(otherPart.name)) {
+                       discountedParts.set(otherPart.id, Math.max(discountedParts.get(otherPart.id) || 0, 0.5));
                     }
                 });
 
@@ -174,22 +174,19 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
                 const rodamientoData = nonSidedUsage['rodamiento rueda'];
                 if (rodamientoData.used < rodamientoData.parts.length) {
                     const rodamientoToDiscount = rodamientoData.parts[rodamientoData.used];
-                    discountedParts.set(rodamientoToDiscount.id, Math.max(discountedParts.get(rodamientoToDiscount.id) || 0, 0.5));
-                    rodamientoData.used++;
+                     if (!usedPartsForSynergy.has(amortiguadorPart.name) && !usedPartsForSynergy.has(rodamientoToDiscount.name)) {
+                        discountedParts.set(rodamientoToDiscount.id, Math.max(discountedParts.get(rodamientoToDiscount.id) || 0, 0.5));
+                        rodamientoData.used++;
+                     }
                 }
             }
             
-            // Rótula <-> Parrilla/Bujes synergy (FIXED to prevent time decrease)
-            const hasRotulaOnSide = findPart('rotula', side);
-            
-            if (hasRotulaOnSide) {
-                const rotulaPart = analysisParts.find(p => p.name.toLowerCase().includes('rotula') && p.name.toLowerCase().includes(side))!;
-                
+            // Rótula <-> Parrilla/Bujes synergy
+            const rotulaPart = getPart('rotula', side);
+            if (rotulaPart) {
                 // Synergy with Parrilla
-                if (findPart('parrilla', side)) {
-                    const parrillaPart = analysisParts.find(p => p.name.toLowerCase().includes('parrilla') && p.name.toLowerCase().includes(side))!;
-                    // If both are being replaced, the labor for the one with less time is redundant.
-                    // We give a 100% discount to the part with less baseTime to be safe.
+                const parrillaPart = getPart('parrilla', side);
+                if (parrillaPart && !usedPartsForSynergy.has(rotulaPart.name) && !usedPartsForSynergy.has(parrillaPart.name)) {
                     if (parrillaPart.baseTime <= rotulaPart.baseTime) {
                         discountedParts.set(parrillaPart.id, Math.max(discountedParts.get(parrillaPart.id) || 0, 1.0));
                     } else {
@@ -201,21 +198,23 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
                 const bujesData = nonSidedUsage['bujes parrilla'];
                 if (bujesData.used < bujesData.parts.length) {
                     const bujePartToUse = bujesData.parts[bujesData.used];
-                    // Discount the cheaper part of the pair to prevent negative time.
-                    if (bujePartToUse.baseTime <= rotulaPart.baseTime) {
-                         discountedParts.set(bujePartToUse.id, Math.max(discountedParts.get(bujePartToUse.id) || 0, 1.0));
-                    } else {
-                        discountedParts.set(rotulaPart.id, Math.max(discountedParts.get(rotulaPart.id) || 0, 1.0));
+                    if (!usedPartsForSynergy.has(rotulaPart.name) && !usedPartsForSynergy.has(bujePartToUse.name)) {
+                        if (bujePartToUse.baseTime <= rotulaPart.baseTime) {
+                             discountedParts.set(bujePartToUse.id, Math.max(discountedParts.get(bujePartToUse.id) || 0, 1.0));
+                        } else {
+                            discountedParts.set(rotulaPart.id, Math.max(discountedParts.get(rotulaPart.id) || 0, 1.0));
+                        }
+                        bujesData.used++;
                     }
-                    bujesData.used++;
                 }
             }
         }
         
         // Espárrago synergy (not side-specific)
-        if (findPart('esparrago de rueda') && analysisParts.length > 1) {
+        const esparragoPart = getPart('esparrago de rueda');
+        if (esparragoPart && analysisParts.length > 1) {
             analysisParts.forEach(part => {
-                if (part.name.toLowerCase().includes('esparrago de rueda')) {
+                if (part.name.toLowerCase().includes('esparrago de rueda') && !usedPartsForSynergy.has(part.name)) {
                     discountedParts.set(part.id, Math.max(discountedParts.get(part.id) || 0, 1.0));
                 }
             });
@@ -282,7 +281,7 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
                     <div className="space-y-2">
                         <h3 className="font-semibold text-lg text-gray-200 border-b border-gray-600 pb-2 mb-2">Desglose del Cálculo</h3>
                         {breakdownItems.map(item => (
-                            <div key={item.name} className="flex justify-between text-gray-300">
+                            <div key={`${item.id}-${item.name}`} className="flex justify-between text-gray-300">
                                 <span>{item.name}</span>
                                 <span>{item.time}</span>
                             </div>

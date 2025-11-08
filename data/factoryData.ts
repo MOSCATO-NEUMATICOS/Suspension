@@ -74,9 +74,41 @@ const transformCatalogToVehicles = (catalog: any): Vehicle[] => {
 // Generate the vehicle list from the catalog
 export const FACTORY_VEHICLES: Vehicle[] = transformCatalogToVehicles(vehicleCatalogData);
 
-// The factory default synergies are now managed here.
-// Users can add more, and reset to this list.
-// The complex dynamic synergies from TimeEstimator are too complex for this simple model
-// and are better handled by the AI-powered synergy analysis. We'll start with an empty list
-// to encourage users to add their own shop-specific synergies using the new AI tool.
-export const FACTORY_SYNERGIES: Synergy[] = [];
+export const FACTORY_SYNERGIES: Synergy[] = [
+  {
+    id: 'syn_1',
+    name: 'Sinergia Axial y Extremo (Izquierdo)',
+    partNames: ['Axial Izquierdo', 'Extremo Izquierdo'],
+    timeReduction: 1.0,
+  },
+  {
+    id: 'syn_2',
+    name: 'Sinergia Axial y Extremo (Derecho)',
+    partNames: ['Axial Derecho', 'Extremo Derecho'],
+    timeReduction: 1.0,
+  },
+  {
+    id: 'syn_3',
+    name: 'Sinergia Amortiguador y Bieleta (Del. Izq.)',
+    partNames: ['Amortiguadores Delanteros Izquierdo', 'Bieleta Izquierdo'],
+    timeReduction: 0.5,
+  },
+  {
+    id: 'syn_4',
+    name: 'Sinergia Amortiguador y Bieleta (Del. Der.)',
+    partNames: ['Amortiguadores Delanteros Derecho', 'Bieleta Derecho'],
+    timeReduction: 0.5,
+  },
+  {
+    id: 'syn_5',
+    name: 'Sinergia Amortiguador y Extremo (Del. Izq.)',
+    partNames: ['Amortiguadores Delanteros Izquierdo', 'Extremo Izquierdo'],
+    timeReduction: 0.5,
+  },
+  {
+    id: 'syn_6',
+    name: 'Sinergia Amortiguador y Extremo (Del. Der.)',
+    partNames: ['Amortiguadores Delanteros Derecho', 'Extremo Derecho'],
+    timeReduction: 0.5,
+  },
+];
