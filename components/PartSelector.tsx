@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Part, SelectedPartConfig, PartSide } from '../types';
 import { WrenchIcon } from './icons/WrenchIcon';
@@ -9,6 +10,7 @@ interface PartSelectorProps {
   parts: Part[];
   selectedConfigs: Record<string, SelectedPartConfig>;
   onConfigChange: (partGroupId: string, config: SelectedPartConfig | null) => void;
+  onClearSelection: () => void;
 }
 
 interface PartGroup {
@@ -142,7 +144,7 @@ const PartControls: React.FC<{ group: PartGroup; config: SelectedPartConfig; onC
 };
 
 
-export const PartSelector: React.FC<PartSelectorProps> = ({ parts, selectedConfigs, onConfigChange }) => {
+export const PartSelector: React.FC<PartSelectorProps> = ({ parts, selectedConfigs, onConfigChange, onClearSelection }) => {
     const [infoModalPart, setInfoModalPart] = useState<string | null>(null);
 
     const partGroups = useMemo((): PartGroup[] => {
@@ -177,6 +179,7 @@ export const PartSelector: React.FC<PartSelectorProps> = ({ parts, selectedConfi
     
     const isParrillaSelected = useMemo(() => Object.keys(selectedConfigs).some(key => key.toLowerCase() === 'parrilla'), [selectedConfigs]);
     const isBujeParrillaSelected = useMemo(() => Object.keys(selectedConfigs).some(key => key.toLowerCase() === 'bujes parrilla'), [selectedConfigs]);
+    const hasSelection = Object.keys(selectedConfigs).length > 0;
 
     const handleCheckChange = (group: PartGroup, isChecked: boolean) => {
         if (isChecked) {
@@ -191,10 +194,19 @@ export const PartSelector: React.FC<PartSelectorProps> = ({ parts, selectedConfi
 
   return (
     <div className="bg-slate-800 rounded-lg p-6 shadow-xl border border-gray-700">
-      <h2 className="text-2xl font-bold text-yellow-400 mb-4 flex items-center">
-        <WrenchIcon className="w-6 h-6 mr-3" />
-        2. Seleccionar Repuestos
-      </h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold text-yellow-400 flex items-center">
+          <WrenchIcon className="w-6 h-6 mr-3" />
+          2. Seleccionar Repuestos
+        </h2>
+        <button
+          onClick={onClearSelection}
+          disabled={!hasSelection}
+          className="px-3 py-1 text-sm bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+        >
+          Limpiar Selección
+        </button>
+      </div>
       <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
         {partGroups.map(group => {
           const config = selectedConfigs[group.id];

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Vehicle, Synergy, SelectedPartConfig } from './types';
-import { INITIAL_VEHICLES, INITIAL_SYNERGIES } from './data/mockData';
+import { FACTORY_VEHICLES, FACTORY_SYNERGIES } from './data/factoryData';
 import { Header } from './components/Header';
 import { VehicleSelector } from './components/VehicleSelector';
 import { PartSelector } from './components/PartSelector';
@@ -10,8 +10,8 @@ import { AdminPanel } from './components/AdminPanel';
 import { ChatBot } from './components/ChatBot';
 
 const App: React.FC = () => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
-  const [synergies, setSynergies] = useState<Synergy[]>(INITIAL_SYNERGIES);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(FACTORY_VEHICLES);
+  const [synergies, setSynergies] = useState<Synergy[]>(FACTORY_SYNERGIES);
   const [selectedBrand, setSelectedBrand] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedConfigs, setSelectedConfigs] = useState<Record<string, SelectedPartConfig>>({});
@@ -57,6 +57,21 @@ const App: React.FC = () => {
     setSelectedModel(model);
     setSelectedConfigs({});
   };
+  
+  const handleFactoryReset = useCallback((options: { vehicles: boolean; synergies: boolean }) => {
+    if (window.confirm("¿Estás seguro de que quieres restaurar los datos seleccionados a los valores de fábrica? Esta acción no se puede deshacer.")) {
+        if (options.vehicles) {
+            setVehicles(FACTORY_VEHICLES);
+        }
+        if (options.synergies) {
+            setSynergies(FACTORY_SYNERGIES);
+        }
+    }
+  }, []);
+  
+  const handleClearSelection = useCallback(() => {
+    setSelectedConfigs({});
+  }, []);
 
 
   return (
@@ -69,6 +84,7 @@ const App: React.FC = () => {
             setVehicles={setVehicles}
             synergies={synergies}
             setSynergies={setSynergies}
+            onFactoryReset={handleFactoryReset}
           />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -86,6 +102,7 @@ const App: React.FC = () => {
                   parts={selectedVehicle.parts}
                   selectedConfigs={selectedConfigs}
                   onConfigChange={handleConfigChange}
+                  onClearSelection={handleClearSelection}
                 />
               )}
             </div>

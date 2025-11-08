@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Part, Synergy, SelectedPartConfig } from '../types';
 import { ClockIcon } from './icons/ClockIcon';
@@ -115,11 +116,25 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
         const selectedPartIds = new Set(analysisParts.map(p => p.id));
         let currentSynergySavings = 0;
         const currentAppliedSynergies: Synergy[] = [];
-        synergies.forEach(synergy => {
-            const isApplicable = synergy.partIds.every(id => selectedPartIds.has(id));
-            if (isApplicable) {
+        const usedPartsForSynergy = new Set<string>();
+
+        const applicableSynergies = synergies.filter(synergy =>
+            synergy.partIds.every(id => selectedPartIds.has(id))
+        );
+
+        // Sort synergies by the highest reduction first to prioritize them.
+        // This ensures that when synergies conflict (share parts), the one with the biggest saving is applied.
+        applicableSynergies.sort((a, b) => b.timeReduction - a.timeReduction);
+
+        applicableSynergies.forEach(synergy => {
+            // Check if any part in this synergy has already been "claimed" by a higher-priority synergy.
+            const isConflicting = synergy.partIds.some(partId => usedPartsForSynergy.has(partId));
+
+            if (!isConflicting) {
                 currentSynergySavings += synergy.timeReduction;
                 currentAppliedSynergies.push(synergy);
+                // Mark all parts of this synergy as used to prevent them from being part of another, smaller synergy saving.
+                synergy.partIds.forEach(partId => usedPartsForSynergy.add(partId));
             }
         });
         
@@ -267,7 +282,7 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
                     <div className="space-y-2">
                         <h3 className="font-semibold text-lg text-gray-200 border-b border-gray-600 pb-2 mb-2">Desglose del Cálculo</h3>
                         {breakdownItems.map(item => (
-                            <div key={item.id} className="flex justify-between text-gray-300">
+                            <div key={item.name} className="flex justify-between text-gray-300">
                                 <span>{item.name}</span>
                                 <span>{item.time}</span>
                             </div>
@@ -294,7 +309,7 @@ export const TimeEstimator: React.FC<TimeEstimatorProps> = ({ vehicleParts, sele
                                         <span>- {dynamicSynergySavings.toFixed(2)} h</span>
                                     </div>
                                     <ul className="pl-5 text-sm text-gray-400">
-                                        {appliedDynamicSynergies.map(s => <li key={s.name}>- {s.name} (-{s.saving.toFixed(2)}h)</li>)}
+                                        {appliedDynamicSynergies.map((s, index) => <li key={`${s.name}-${index}`}>- {s.name} (-{s.saving.toFixed(2)}h)</li>)}
                                     </ul>
                                 </>
                              )}
